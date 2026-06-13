@@ -1,0 +1,863 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CN Trip 2026 - Trip Planner</title>
+    <link
+      rel="preconnect"
+      href="https://fonts.googleapis.com"
+    />
+    <link
+      rel="preconnect"
+      href="https://fonts.gstatic.com"
+      crossorigin
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      crossorigin=""
+    />
+    <style>
+      :root {
+        --bg: linear-gradient(130deg, #f5f9ff 0%, #eef5ff 40%, #fdf6f0 100%);
+        --panel: rgba(255, 255, 255, 0.86);
+        --text: #0f1a2a;
+        --muted: #4f5d74;
+        --line: #1f67ff;
+        --line-soft: #7ca0ff;
+        --accent: #ff8a00;
+        --good: #0f9d58;
+        --warn: #c57f00;
+        --border: rgba(15, 26, 42, 0.12);
+        --shadow: 0 18px 50px rgba(20, 35, 65, 0.16);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: 'Manrope', system-ui, -apple-system, sans-serif;
+        color: var(--text);
+        background: var(--bg);
+        min-height: 100vh;
+      }
+
+      .shell {
+        max-width: 1080px;
+        margin: 0 auto;
+        padding: 28px 18px 48px;
+      }
+
+      .hero {
+        padding: 24px 24px 22px;
+        border-radius: 20px;
+        background: linear-gradient(120deg, #101b57 0%, #2f5dff 58%, #f39c12 100%);
+        color: #fff;
+        box-shadow: var(--shadow);
+        position: relative;
+        overflow: hidden;
+      }
+
+      .hero::after {
+        content: '';
+        position: absolute;
+        right: -90px;
+        top: -90px;
+        width: 260px;
+        height: 260px;
+        background: radial-gradient(circle, rgba(255, 255, 255, 0.16), transparent 65%);
+        border-radius: 50%;
+      }
+
+      .hero h1 {
+        margin: 0;
+        font-family: 'Space Grotesk', 'Manrope', sans-serif;
+        font-size: clamp(1.8rem, 3vw, 2.4rem);
+      }
+
+      .hero p {
+        margin: 10px 0 0;
+        opacity: 0.95;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: 1.15fr 1fr;
+        gap: 16px;
+        margin-top: 16px;
+      }
+
+      .panel {
+        border-radius: 18px;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        backdrop-filter: blur(3px);
+        box-shadow: var(--shadow);
+        padding: 16px;
+      }
+
+      .kicker {
+        color: var(--warn);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        font-weight: 800;
+        font-size: 0.75rem;
+        margin-bottom: 4px;
+      }
+
+      h2 {
+        margin: 0;
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 1.18rem;
+      }
+
+      .sub {
+        color: var(--muted);
+        margin: 6px 0 0;
+        font-size: 0.94rem;
+      }
+
+      .row {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+        margin-top: 12px;
+      }
+
+      .stat {
+        padding: 12px;
+        border-radius: 14px;
+        border: 1px solid var(--border);
+        background: #ffffff;
+        animation: popIn 300ms ease both;
+      }
+
+      .stat h3 {
+        margin: 0;
+        font-size: 0.82rem;
+        font-weight: 700;
+        color: var(--muted);
+      }
+
+      .stat p {
+        margin: 4px 0 0;
+        font-size: 1.22rem;
+        font-weight: 800;
+      }
+
+      .section {
+        margin-top: 16px;
+        border-radius: 18px;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        box-shadow: var(--shadow);
+        padding: 16px;
+      }
+
+      .timeline {
+        margin-top: 12px;
+        border-left: 3px solid var(--line);
+        padding-left: 16px;
+      }
+
+      .stop {
+        position: relative;
+        padding: 0 0 18px 8px;
+        animation: fadeIn 380ms ease both;
+      }
+
+      .stop:last-child {
+        padding-bottom: 4px;
+      }
+
+      .stop::before {
+        content: '';
+        position: absolute;
+        left: -23px;
+        top: 3px;
+        width: 13px;
+        height: 13px;
+        border-radius: 50%;
+        background: white;
+        border: 3px solid var(--line);
+      }
+
+      .tag {
+        display: inline-flex;
+        padding: 3px 10px;
+        border-radius: 999px;
+        background: #eef4ff;
+        color: #1d3fb0;
+        font-size: 0.75rem;
+        font-weight: 700;
+        margin-left: 8px;
+      }
+
+      .stop h3 {
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .stop .meta {
+        margin: 5px 0 0;
+        color: var(--muted);
+        font-size: 0.93rem;
+      }
+
+      .tables {
+        display: grid;
+        gap: 12px;
+        margin-top: 12px;
+      }
+
+      .flight-schedule {
+        display: grid;
+        gap: 8px;
+        min-width: 250px;
+      }
+
+      .flight-segment {
+        border-left: 2px solid #1f67ff;
+        padding-left: 10px;
+        display: grid;
+        gap: 4px;
+      }
+
+      .flight-segment + .flight-segment {
+        margin-top: 6px;
+        padding-top: 6px;
+        border-top: 1px dashed #b9c6dd;
+      }
+
+      .flight-segment-title {
+        margin-bottom: 2px;
+        font-size: 0.75rem;
+        color: var(--warn);
+        font-weight: 700;
+      }
+
+      .flight-schedule-row {
+        display: flex;
+        gap: 8px;
+      }
+
+      .io-label {
+        min-width: 76px;
+        color: var(--muted);
+        font-weight: 700;
+        font-size: 0.84rem;
+      }
+
+      .flight-route-text {
+        line-height: 1.35;
+      }
+
+      .flight-note {
+        font-size: 0.76rem;
+        color: var(--muted);
+        margin-left: 84px;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.92rem;
+      }
+
+      thead th {
+        font-family: 'Space Grotesk', sans-serif;
+        text-align: left;
+        color: var(--muted);
+        border-bottom: 1px solid var(--border);
+        padding: 10px 8px;
+      }
+
+      tbody tr {
+        border-bottom: 1px dashed var(--border);
+        animation: fadeIn 320ms ease both;
+      }
+
+      tbody tr:last-child {
+        border-bottom: none;
+      }
+
+      td {
+        padding: 8px;
+        vertical-align: top;
+      }
+
+      td strong {
+        font-weight: 700;
+      }
+
+      .money {
+        text-align: right;
+        white-space: nowrap;
+      }
+
+      .status {
+        font-size: 0.78rem;
+        color: var(--good);
+        font-weight: 700;
+      }
+
+      .status.pending {
+        color: #b36b00;
+      }
+
+      .map-label {
+        font-size: 12px;
+        font-weight: 700;
+        line-height: 1;
+        color: #ffffff;
+        background: #1f67ff;
+        border: 2px solid #ffffff;
+        border-radius: 999px;
+        width: 26px;
+        height: 26px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 12px rgba(16, 27, 42, 0.2);
+      }
+
+      .map-line-label {
+        background: #2f5dff;
+      }
+
+      .step-hotel {
+        color: var(--muted);
+        font-size: 0.84rem;
+        margin: 6px 0 0;
+      }
+
+      .cost {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .map-wrap {
+        margin-top: 12px;
+      }
+
+      #routeMap {
+        width: 100%;
+        height: 430px;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        overflow: hidden;
+      }
+
+      .map-note {
+        margin: 8px 0 0;
+        color: var(--muted);
+        font-size: 0.88rem;
+      }
+
+      @media (max-width: 900px) {
+        .grid,
+        .cost {
+          grid-template-columns: 1fr;
+        }
+
+        .row {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @keyframes popIn {
+        from {
+          transform: translateY(6px);
+          opacity: 0;
+        }
+        to {
+          transform: translateY(0);
+          opacity: 1;
+        }
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateX(-4px);
+        }
+        to {
+          opacity: 1;
+          transform: translateX(0);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <header class="hero">
+        <p class="kicker">CN Trip Planner</p>
+        <h1>CN Trip 2026 Overview</h1>
+        <p>
+          Travel plan from Dublin to ChongQing, Shanghai, Hong Kong, Seoul, and Korea.
+          Includes itinerary, flight details, hotel costs, and route map.
+        </p>
+      </header>
+
+      <section class="grid">
+        <div class="panel">
+          <p class="kicker">Overview Snapshot</p>
+          <h2>Trip Highlights</h2>
+          <p class="sub">Total trip duration: 29 days (Dec 20, 2026 to Jan 17, 2027)</p>
+          <div class="row">
+            <div class="stat">
+              <h3>Flight Total</h3>
+              <p>€3,652.60</p>
+            </div>
+            <div class="stat">
+              <h3>Confirmed Hotels</h3>
+              <p>€1,169.00</p>
+            </div>
+          </div>
+          <div class="row">
+            <div class="stat">
+              <h3>Passengers</h3>
+              <p>2 people</p>
+            </div>
+            <div class="stat">
+              <h3>Per Person (known)</h3>
+              <p>€2,410.80</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <p class="kicker">Cost Summary</p>
+          <h2>Known Expenses</h2>
+          <div class="cost">
+            <div class="stat">
+              <h3>Flights</h3>
+              <p>€3,652.60</p>
+            </div>
+            <div class="stat">
+              <h3>Hotels (confirmed)</h3>
+              <p>€1,169.00</p>
+            </div>
+            <div class="stat">
+              <h3>Known Total</h3>
+              <p>€4,821.60</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <p class="kicker">Itinerary Timeline</p>
+        <h2>City-by-city itinerary (with hotel data)</h2>
+        <div class="timeline" id="timeline"></div>
+      </section>
+
+      <section class="section">
+        <p class="kicker">Flight Details</p>
+        <h2>Segment by segment</h2>
+        <div class="tables">
+          <div class="map-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Route</th>
+                  <th>Airline / Class</th>
+                  <th>Schedule</th>
+                  <th class="money">2-person Fare</th>
+                  <th class="money">1-person Fare</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="flightRows"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <p class="kicker">Hotel Details</p>
+        <h2>Stay plan</h2>
+        <div class="tables">
+          <table>
+            <thead>
+              <tr>
+                <th>City</th>
+                <th>Start date</th>
+                <th>Nights</th>
+                <th>Hotel</th>
+                <th class="money">2-person Fare</th>
+                <th class="money">1-person Fare</th>
+              </tr>
+            </thead>
+            <tbody id="hotelRows"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="section">
+        <p class="kicker">Route Map</p>
+        <h2>Planned city sequence on map</h2>
+        <div id="routeMap"></div>
+        <p class="map-note">
+          Data uses city-level coordinates and maps flight/hotel sequence as a travel route.
+          For a highly detailed map, route legs can be switched to real GPS trace.
+        </p>
+      </section>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+    <script>
+      const tripData = {
+        itinerary: [
+          { city: 'Dublin', startDate: '2026-12-20', hotel: 'Transit (no hotel listed)' },
+          { city: 'ChongQing / Qingdao / Zhangjiajie', startDate: '2026-12-21', hotel: 'Hotel pending' },
+          { city: 'Shanghai', startDate: '2026-12-28', hotel: 'Ji Hotel Shanghai, The Bund Jiling East Road' },
+          { city: 'Hong Kong', startDate: '2027-01-02', hotel: 'Emperor Hotel' },
+          { city: 'Seoul', startDate: '2027-01-06', hotel: 'Shilla Stay Seodaemun' },
+          { city: 'Pyeongchang', startDate: '2027-01-10', hotel: 'Hotel pending' },
+          { city: 'Suwon', startDate: '2027-01-13', hotel: 'Hotel pending' },
+          { city: 'Dublin', startDate: '2027-01-17', hotel: 'Return arrival at 22:45' },
+        ],
+        flights: [
+          {
+            route: 'DUB ↔ ICN',
+            meta: 'Lufthansa / Premium Economy',
+            schedule: [
+              {
+                label: 'Outbound',
+                departure: '2026-12-20 09:10 DUB',
+                arrival: '2026-12-21 11:10 ICN',
+                via: 'via FRA',
+              },
+              {
+                label: 'Return',
+                departure: '2027-01-17 12:55 ICN',
+                arrival: '2027-01-17 22:45 DUB',
+                via: 'via FRA',
+              },
+            ],
+            total2: 2561.88,
+            total1: 1280.94,
+            status: 'round-trip',
+          },
+          {
+            route: 'ICN → TAO → CKG',
+            meta: 'China Eastern',
+            schedule: [
+              {
+                label: 'Flight',
+                departure: '16:40 ICN',
+                arrival: '22:10 CKG',
+                via: 'transit TAO',
+              },
+            ],
+            total2: 253.0,
+            total1: 126.5,
+            status: 'one-way',
+          },
+          {
+            route: 'CKG → PVG',
+            meta: 'China Eastern',
+            schedule: [
+              {
+                label: 'Flight',
+                departure: '2026-12-28 13:15 CKG T3',
+                arrival: '15:45 PVG T1',
+              },
+            ],
+            total2: 295.18,
+            total1: 147.59,
+            status: 'one-way',
+          },
+          {
+            route: 'PVG → HKG',
+            meta: 'Cathay Pacific',
+            schedule: [
+              {
+                label: 'Flight',
+                departure: '12:50 PVG',
+                arrival: '15:55 HKG',
+              },
+            ],
+            total2: 269.0,
+            total1: 134.5,
+            status: 'one-way',
+          },
+          {
+            route: 'HKG → ICN',
+            meta: 'Air Premia',
+            schedule: [
+              {
+                label: 'Flight',
+                departure: '13:40 HKG T1',
+                arrival: '17:15 ICN T1',
+              },
+            ],
+            total2: 273.54,
+            total1: 136.77,
+            status: 'one-way',
+          },
+        ],
+        hotels: [
+          {
+            city: 'ChongQing / Qingdao / Zhangjiajie',
+            startDate: '2026-12-21',
+            nights: 7,
+            hotel: 'Hotel pending',
+            total2: null,
+            total1: null,
+            status: 'pending',
+          },
+          {
+            city: 'Shanghai',
+            startDate: '2026-12-28',
+            nights: 5,
+            hotel: 'Ji Hotel Shanghai, The Bund Jiling East Road',
+            total2: 418,
+            total1: 209,
+            status: 'confirmed',
+          },
+          {
+            city: 'Hong Kong',
+            startDate: '2027-01-02',
+            nights: 4,
+            hotel: 'Emperor Hotel',
+            total2: 424,
+            total1: 212,
+            status: 'confirmed',
+          },
+          {
+            city: 'Seoul',
+            startDate: '2027-01-06',
+            nights: 4,
+            hotel: 'Shilla Stay Seodaemun',
+            total2: 327,
+            total1: 163.5,
+            status: 'confirmed',
+          },
+          {
+            city: 'Pyeongchang',
+            startDate: '2027-01-10',
+            nights: 3,
+            hotel: 'Hotel pending',
+            total2: null,
+            total1: null,
+            status: 'pending',
+          },
+          {
+            city: 'Suwon',
+            startDate: '2027-01-13',
+            nights: 4,
+            hotel: 'Hotel pending',
+            total2: null,
+            total1: null,
+            status: 'pending',
+          },
+        ],
+        mapStops: [
+          { label: 'Dublin', lat: 53.3498, lng: -6.2603 },
+          { label: 'Incheon (ICN)', lat: 37.4602, lng: 126.4407 },
+          { label: 'ChongQing (CKG)', lat: 29.5630, lng: 106.5516 },
+          { label: 'Shanghai', lat: 31.2304, lng: 121.4737 },
+          { label: 'Hong Kong', lat: 22.3193, lng: 114.1694 },
+          { label: 'Seoul', lat: 37.5665, lng: 126.9780 },
+          { label: 'Pyeongchang', lat: 37.3706, lng: 128.3914 },
+          { label: 'Suwon', lat: 37.2636, lng: 127.0286 },
+          { label: 'Incheon (ICN)', lat: 37.4602, lng: 126.4407 },
+          { label: 'Dublin (Return)', lat: 53.3498, lng: -6.2603 },
+        ],
+        mapLines: [
+          [0, 1],
+          [1, 2],
+          [2, 3],
+          [3, 4],
+          [4, 5],
+          [5, 6],
+          [6, 7],
+          [7, 8],
+        ],
+      };
+
+      const fmtEUR = (value) =>
+        value === null
+          ? '-'
+          : new Intl.NumberFormat('en-US', { style: 'currency', currency: 'EUR' }).format(value);
+
+      const formatFlightSchedule = (schedule) => {
+        if (!Array.isArray(schedule)) {
+          return `<span class="flight-route-text">${String(schedule).replace(/\n/g, '<br />')}</span>`;
+        }
+
+        return `
+          <div class="flight-schedule">
+            ${schedule
+              .map(
+                (segment) => `
+              <div class="flight-segment">
+                ${
+                  segment.label
+                    ? `<div class="flight-segment-title">${segment.label}</div>`
+                    : ''
+                }
+                <div class="flight-schedule-row">
+                  <span class="io-label">Departure</span>
+                  <span class="flight-route-text">${segment.departure}</span>
+                </div>
+                <div class="flight-schedule-row">
+                  <span class="io-label">Arrival</span>
+                  <span class="flight-route-text">${segment.arrival}</span>
+                </div>
+                ${segment.via ? `<div class="flight-note">${segment.via}</div>` : ''}
+              </div>
+            `
+              )
+              .join('')}
+          </div>
+        `;
+      };
+
+      const timeline = document.getElementById('timeline');
+      tripData.itinerary.forEach((item, index) => {
+        const stop = document.createElement('article');
+        stop.className = 'stop';
+        stop.style.animationDelay = `${index * 55}ms`;
+        stop.innerHTML = `
+          <h3>${item.startDate} <span class="tag">STEP ${index + 1}</span></h3>
+          <h3>${item.city}</h3>
+          <p class="step-hotel"><strong>Hotel:</strong> ${item.hotel}</p>
+        `;
+        timeline.appendChild(stop);
+      });
+
+      const flightRows = document.getElementById('flightRows');
+      tripData.flights.forEach((flight, index) => {
+        const row = document.createElement('tr');
+        row.style.animationDelay = `${index * 45}ms`;
+        row.innerHTML = `
+          <td><strong>${flight.route}</strong></td>
+          <td>${flight.meta}</td>
+          <td>${formatFlightSchedule(flight.schedule)}</td>
+          <td class="money">${fmtEUR(flight.total2)}</td>
+          <td class="money">${fmtEUR(flight.total1)}</td>
+          <td><span class="status ${flight.status === 'pending' ? 'pending' : ''}">${flight.status}</span></td>
+        `;
+        flightRows.appendChild(row);
+      });
+
+      const hotelRows = document.getElementById('hotelRows');
+      tripData.hotels.forEach((hotel, index) => {
+        const row = document.createElement('tr');
+        row.style.animationDelay = `${index * 45}ms`;
+        row.innerHTML = `
+          <td><strong>${hotel.city}</strong></td>
+          <td>${hotel.startDate}</td>
+          <td>${hotel.nights}</td>
+          <td>${hotel.hotel}</td>
+          <td class="money">${fmtEUR(hotel.total2)}</td>
+          <td class="money">${fmtEUR(hotel.total1)}</td>
+        `;
+        hotelRows.appendChild(row);
+      });
+
+      const map = L.map('routeMap', { attributionControl: false }).setView([30.6, 122], 3);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 18,
+      }).addTo(map);
+
+      const routePoints = tripData.mapStops.map((stop) => [stop.lat, stop.lng]);
+      const markerColors = ['#1f67ff', '#00a65a', '#5c52c4', '#eb5f00', '#18a2ff', '#ff3b86', '#0088d8', '#f5a623', '#6d4c41', '#1f67ff'];
+
+      const makePin = (text, color) =>
+        L.divIcon({
+          className: '',
+          html: `<div class="map-label" style="background:${color}">${text}</div>`,
+          iconSize: [26, 26],
+          iconAnchor: [13, 13],
+          popupAnchor: [0, -12],
+        });
+
+      const makeLineLabel = (text) =>
+        L.divIcon({
+          className: '',
+          html: `<div class="map-label map-line-label">${text}</div>`,
+          iconSize: [26, 26],
+          iconAnchor: [13, 13],
+        });
+
+      const bezierPoint = (start, control1, control2, end, t) => {
+        const inv = 1 - t;
+        const tt = t * t;
+        const ttt = tt * t;
+        const uu = inv * inv;
+        const uuu = uu * inv;
+
+        return [
+          uuu * start[0] + 3 * uu * t * control1[0] + 3 * inv * tt * control2[0] + ttt * end[0],
+          uuu * start[1] + 3 * uu * t * control1[1] + 3 * inv * tt * control2[1] + ttt * end[1],
+        ];
+      };
+
+      const buildCurve = (start, end, steps = 50, direction = 1) => {
+        const latDelta = end[0] - start[0];
+        const lngDelta = end[1] - start[1];
+        const len = Math.sqrt(latDelta * latDelta + lngDelta * lngDelta) || 1;
+        const bend = 0.9;
+        const normY = lngDelta / len;
+        const normX = latDelta / len;
+
+        const control1 = [
+          start[0] + latDelta * 0.25 - normY * bend * direction,
+          start[1] + lngDelta * 0.25 + normX * bend * direction,
+        ];
+        const control2 = [
+          start[0] + latDelta * 0.75 - normY * bend * direction,
+          start[1] + lngDelta * 0.75 + normX * bend * direction,
+        ];
+
+        const points = [];
+        for (let i = 0; i <= steps; i += 1) {
+          const t = i / steps;
+          points.push(bezierPoint(start, control1, control2, end, t));
+        }
+        return points;
+      };
+
+      tripData.mapStops.forEach((stop, index) => {
+        L.marker([stop.lat, stop.lng], {
+          icon: makePin(index + 1, markerColors[index % markerColors.length]),
+        })
+          .bindPopup(`<strong>${index + 1}. ${stop.label}</strong><br />${stop.lat.toFixed(4)}, ${stop.lng.toFixed(4)}`)
+          .addTo(map);
+      });
+
+      tripData.mapLines.forEach(([from, to], index) => {
+        const fromPt = routePoints[from];
+        const toPt = routePoints[to];
+        const segmentLine = [fromPt, toPt];
+        L.polyline(segmentLine, {
+          color: '#1f67ff',
+          weight: 3,
+          opacity: 0.75,
+        }).addTo(map);
+        const labelPoint = segmentLine[Math.floor(segmentLine.length / 2)];
+        L.marker(labelPoint, {
+          icon: makeLineLabel(index + 1),
+          interactive: false,
+        }).addTo(map);
+      });
+
+      const bounds = L.latLngBounds(routePoints);
+      map.fitBounds(bounds, { padding: [35, 35], maxZoom: 6 });
+    </script>
+  </body>
+</html>
