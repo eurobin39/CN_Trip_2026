@@ -843,8 +843,7 @@
       tripData.mapLines.forEach(([from, to], index) => {
         const fromPt = routePoints[from];
         const toPt = routePoints[to];
-        const isStraight = tripData.mapStops[from].label.includes('Seoul') && tripData.mapStops[to].label.includes('Pyeongchang');
-        const segmentLine = isStraight ? [fromPt, toPt] : buildCurve(fromPt, toPt, 50, index % 2 === 0 ? 1 : -1);
+        const segmentLine = [fromPt, toPt];
         L.polyline(segmentLine, {
           color: '#1f67ff',
           weight: 3,
